@@ -71,3 +71,6 @@ AgoraRtcEngineKit filter=lfs diff=lfs merge=lfs -text
 
 # eye tracking
 *.pldata filter=lfs diff=lfs merge=lfs -text
+
+# Data Files
+*.csv filter=lfs diff=lfs merge=lfs -text
