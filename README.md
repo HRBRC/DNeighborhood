@@ -35,7 +35,7 @@
 
 ### Various Related Content work
 
-* See []() for Unity related project files
+* See []()
 
 ### Documentation related to project
 
