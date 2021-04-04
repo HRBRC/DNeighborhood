@@ -113,6 +113,7 @@ va_bric_ct_hazard = va_bric_ct_hazard %>% rename(Data_Value = Hazard_Index) %>% 
                                                                                        Variable_Family = "ENVIRONMENTAL HAZARDS",
                                                                                        Measure = "Baseline Resilience Indicators for Communities, Hazard Index")
 va_bric_ct_hazard = va_bric_ct_hazard %>%  select(c("CensusTract", "CensusTractName", "Measure_Id", "Variable_Family", "Measure", "Data_Value"))
+va_bric_ct_hazard = va_bric_ct_hazard %>% mutate(DataSet = "BaselineResilienceIndicatorsforCommunities2020")
 
 # "Measure_Id", "Variable_Family", "Measure", "Data_Value"
 va_bric_ct_pop = va_bric_ct %>% left_join(va_bric, by="MatchingFIPS") %>% select(CensusTract, CensusTractName, Pop_Vulnerability_Index)
@@ -120,7 +121,7 @@ va_bric_ct_pop = va_bric_ct_pop %>% rename(Data_Value = Pop_Vulnerability_Index)
                                                                                        Variable_Family = "VULNERABILITY",
                                                                                        Measure = "Baseline Resilience Indicators for Communities,  Population Vulnverability Index")
 va_bric_ct_pop = va_bric_ct_pop %>%  select(c("CensusTract", "CensusTractName", "Measure_Id", "Variable_Family", "Measure", "Data_Value"))
-
+va_bric_ct_pop = va_bric_ct_pop %>% mutate(DataSet = "BaselineResilienceIndicatorsforCommunities2020")
 
 va_digital_twin = bind_rows(va_acs, full_va_500_census_tract, va_vulnerability_index, va_bike_ped_path_miles, va_bric_ct_pop, va_bric_ct_hazard) %>% 
   mutate(Variable_Family = Variable_Family %>% toupper() %>% 
