@@ -127,6 +127,9 @@ va_digital_twin = bind_rows(va_acs, full_va_500_census_tract, va_vulnerability_i
   mutate(Variable_Family = Variable_Family %>% toupper() %>% 
            trimws()) %>% filter(CensusTractName != "Virginia")
 
+
+# data_for_emily_query = va_digital_twin %>% filter(Variable_Family == "PREVENTION" | Variable_Family == "HEALTH INSURANCE COVERAGE") %>% filter(CensusTractName %>% str_detect("Norfolk")) 
+
 va_digital_twin_categories = read_csv("data/category-mapping/mapping-from-variable-family-to-category-and-subcategory.csv")
 va_digital_twin = va_digital_twin %>% inner_join(va_digital_twin_categories, by="Variable_Family") %>% mutate(Measure = paste0(Variable_Family, ": ", Measure)) %>% select(-Variable_Family) %>% arrange(Category, Subcategory)
 write_csv(va_digital_twin, "output/va-digital-twin.csv")
