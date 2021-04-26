@@ -1,6 +1,5 @@
 library(tidyverse)
 
-
 # # ACS codes and names
 acs_codes_names_demo <- read_csv("data/acs/demographic-characteristics-acs-metadata.csv")
 colnames(acs_codes_names_demo) =  c("Measure_Id", "Measure")
@@ -132,10 +131,20 @@ va_digital_twin = bind_rows(va_acs, full_va_500_census_tract, va_vulnerability_i
 
 va_digital_twin_categories = read_csv("data/category-mapping/mapping-from-variable-family-to-category-and-subcategory.csv")
 va_digital_twin = va_digital_twin %>% inner_join(va_digital_twin_categories, by="Variable_Family") %>% mutate(Measure = paste0(Variable_Family, ": ", Measure)) %>% select(-Variable_Family) %>% arrange(Category, Subcategory)
-write_csv(va_digital_twin, "output/va-digital-twin.csv")
-
+va_digital_twin = va_digital_twin %>%  distinct(CensusTract, Measure_Id, .keep_all = TRUE)
+write_csv(va_digital_twin, "output/long/va-digital-neighborhoods-data-long.csv")
 
 data_for_chris_query = va_digital_twin %>%  filter(CensusTractName %>% str_detect("Norfolk"))
-write_csv(data_for_chris_query, "output/norfolk-only-digital-neighborhoods-data.csv")
+write_csv(data_for_chris_query, "output/long/norfolk-only-digital-neighborhoods-data-long.csv")
+
+va_digital_twin_wide_measure_id_lookup = va_digital_twin %>% select(Measure, Measure_Id) %>% distinct()
+va_digital_twin_wide = va_digital_twin %>% select(CensusTract, CensusTractName, Measure_Id, Data_Value) %>% pivot_wider(names_from = Measure_Id, values_from = Data_Value)
+
+write_csv(va_digital_twin_wide, "output/wide/va-digital-neighborhoods-data-wide.csv")
+write_csv(va_digital_twin_wide_measure_id_lookup, "output/wide/va_digital_twin_wide_measure_id_lookup.csv")
+
+data_for_chris_query_wide = va_digital_twin_wide %>%  filter(CensusTractName %>% str_detect("Norfolk"))
+write_csv(data_for_chris_query_wide, "output/wide/norfolk-only-digital-neighborhoods-data-wide.csv")
+
 
 
