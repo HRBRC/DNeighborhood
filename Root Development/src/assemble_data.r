@@ -1,4 +1,6 @@
 library(tidyverse)
+library(zipcodeR)
+library(tigris)
 
 # # ACS codes and names
 acs_codes_names_demo <- read_csv("data/acs/demographic-characteristics-acs-metadata.csv")
@@ -29,6 +31,43 @@ tidy_acs_vars = function(acs_df)
   return(to_return)
 }
 
+replacement_function <- function (lat, lon, benchmark, vintage) 
+{
+  if (missing(benchmark)) {
+    benchmark <- "Public_AR_Census2020"
+  }
+  else {
+    benchmark <- benchmark
+  }
+  if (missing(vintage)) {
+    vintage <- "Census2020_Census2020"
+  }
+  else {
+    vintage <- vintage
+  }
+  call_start <- "https://geocoding.geo.census.gov/geocoder/geographies/coordinates?"
+  url <- paste0("x=", lon, "&y=", lat)
+  benchmark0 <- paste0("&benchmark=", benchmark)
+  vintage0 <- paste0("&vintage=", vintage, "&format=json")
+  url_full <- paste0(call_start, url, benchmark0, vintage0)
+  r <- httr::GET(url_full)
+  httr::stop_for_status(r)
+  response <- httr::content(r)
+  return(response$result$geographies$`Census Blocks`[[1]]$GEOID)
+  if (length(response$result$geographies$`2020 Census Blocks`[[1]]$GEOID) ==
+      0) {
+    message(paste0("Lat/lon (", lat, ", ", lon, ") returned no geocodes. An NA was returned."))
+    return(NA_character_)
+  }
+  else {
+    if (length(response$result$geographies$`2020 Census Blocks`[[1]]$GEOID) >
+        1) {
+      message(paste0("Lat/lon (", lat, ", ", lon, ") returned more than geocode. The first match was returned."))
+    }
+    return(response$result$geographies$`2020 Census Blocks`[[1]]$GEOID)
+  }
+}
+
 fill_in_missing_cts = function(data_df, ct_tbl, filter_var)
 {
   to_return = data_df %>% filter(Measure_Id == filter_var)
@@ -38,6 +77,50 @@ fill_in_missing_cts = function(data_df, ct_tbl, filter_var)
   return(to_return)
 }
 
+
+cleanup_tbl_and_add_year_col = function(df, year_value, dataset_value)
+{
+  df_to_return = df
+  df_to_return = df_to_return %>% mutate(DataSet = dataset_value)
+  df_to_return = df_to_return %>% mutate(Year=year_value)
+  df_to_return = df_to_return %>% mutate(Variable_Family = Variable_Family %>% toupper())
+  df_to_return = df_to_return %>% mutate(CensusTractName=CensusTractName %>% str_remove_all(","),
+                                         Measure=Measure %>% str_remove_all(","))
+  
+  df_to_return = df_to_return %>% filter(CensusTractName != "Virginia")
+  return(df_to_return)
+  
+}
+
+# # medicare opiate data
+# 
+# va_medicare_opiate_data = read_csv("data/cms/medicare-part-d-opioid-prescriber-summary-file-2016.csv")
+# colnames(va_medicare_opiate_data) = c("NPI", "Provider_Last_Name", "Provider_First_Name", "Provider_ZIP_Code", "Provider_State", "Specialty_Description",
+#                "Total_Claim_Count", "Opioid_Claim_Count", "Opioid_Prescribing_Rate", "Long_Acting_Opioid_Claims", "Long_Acting_Opioid_Prescribing_Rate")
+# 
+# va_zip_codes = search_state("VA") %>% select(c("zipcode", "lat", "lng"))
+# colnames(va_zip_codes) = c("Provider_ZIP_Code", "Lat", "Lng")
+# va_medicare_opiate_data = va_medicare_opiate_data %>% inner_join(va_zip_codes, by=c("Provider_ZIP_Code"))
+# va_medicare_opiate_data = va_medicare_opiate_data %>% drop_na(c("Lat", "Lng"))
+# 
+# unique_va_medicare_opiate_data_lat_lng = va_medicare_opiate_data %>% distinct(Lat, Lng)
+# unique_va_medicare_opiate_data_lat_lng$census_code <- apply(unique_va_medicare_opiate_data_lat_lng, 1, function(row) replacement_function(row['Lat'], row['Lng']))
+# unique_va_medicare_opiate_data_lat_lng$census_tract <- substr(unique_va_medicare_opiate_data_lat_lng$census_code, 1, 11)
+# 
+# va_medicare_opiate_data = va_medicare_opiate_data %>% inner_join(unique_va_medicare_opiate_data_lat_lng, by=c("Lat", "Lng"))
+
+
+# va_vulnerability_index %>% select(c("CensusTract", "Measure_Id", "Variable_Family", "Measure", "Data_Value"))
+
+# va_medicare_opiate_data = va_medicare_opiate_data %>% group_by(census_tract) %>% summarise(CT_Total_Claim_Count = sum(Total_Claim_Count, na.rm = T), CT_Opioid_Claim_Count = sum(Opioid_Claim_Count, na.rm = T), CT_Long_Acting_Opioid_Claims = sum(Long_Acting_Opioid_Claims, na.rm = T))
+# va_medicare_opiate_data = va_medicare_opiate_data %>% rename(CensusTract = census_tract)
+# 
+# 
+# 
+# va_medicare_opiate_data_long = va_medicare_opiate_data %>% pivot_longer(!CensusTract, names_to = "Measure_Id", values_to = "Data_Value")
+# va_medicare_opiate_data_long = va_medicare_opiate_data_long %>% mutate(Variable_Family = "Medicaid Data")
+# va_medicare_opiate_data_long = va_medicare_opiate_data_long %>% mutate(Measure = str_replace_all(Measure_Id, "_", " "))
+# va_medicare_opiate_data_long = va_medicare_opiate_data_long %>% select(c("CensusTract", "Measure_Id", "Variable_Family", "Measure", "Data_Value"))
 
 # ACS Data
 #################################################
@@ -122,9 +205,39 @@ va_bric_ct_pop = va_bric_ct_pop %>% rename(Data_Value = Pop_Vulnerability_Index)
 va_bric_ct_pop = va_bric_ct_pop %>%  select(c("CensusTract", "CensusTractName", "Measure_Id", "Variable_Family", "Measure", "Data_Value"))
 va_bric_ct_pop = va_bric_ct_pop %>% mutate(DataSet = "BaselineResilienceIndicatorsforCommunities2020")
 
-va_digital_twin = bind_rows(va_acs, full_va_500_census_tract, va_vulnerability_index, va_bike_ped_path_miles, va_bric_ct_pop, va_bric_ct_hazard) %>% 
+census_tract_info = va_bric_ct_pop %>% select(CensusTract, CensusTractName)
+# va_medicare_opiate_data_long = va_medicare_opiate_data_long %>% inner_join(census_tract_info, by="CensusTract")
+
+# va_medicare_opiate_data_long = va_medicare_opiate_data_long %>% select(c("CensusTract", "CensusTractName", "Measure_Id", "Variable_Family", "Measure", "Data_Value"))
+
+va_digital_twin = bind_rows(va_acs, full_va_500_census_tract, va_vulnerability_index, va_bike_ped_path_miles, va_bric_ct_pop, va_bric_ct_hazard) %>% # va_medicare_opiate_data_long 
   mutate(Variable_Family = Variable_Family %>% toupper() %>% 
            trimws()) %>% filter(CensusTractName != "Virginia")
+
+
+va_acs = va_acs %>% cleanup_tbl_and_add_year_col(year = "2017", dataset_value = "ACS 5 Year Estimate")
+full_va_500_census_tract = full_va_500_census_tract %>% cleanup_tbl_and_add_year_col(year = "2017", dataset_value = "CDC 500 Cities")
+va_vulnerability_index = va_vulnerability_index %>% cleanup_tbl_and_add_year_col(year = "2021", dataset_value = "Covid Community Vulnerability Index")
+va_bike_ped_path_miles = va_bike_ped_path_miles %>% cleanup_tbl_and_add_year_col(year = "2017", dataset_value = "BikePed Path Miles")
+va_bric_ct_pop = va_bric_ct_pop %>% cleanup_tbl_and_add_year_col(year = "2020", dataset_value = "Human Population - Baseline Resilience Indicators for Communities")
+va_bric_ct_hazard = va_bric_ct_hazard %>% cleanup_tbl_and_add_year_col(year = "2020", dataset_value = "Environmental Hazards - Baseline Resilience Indicators for Communities")
+
+big_tbl = bind_rows(va_acs, full_va_500_census_tract, va_vulnerability_index, va_bike_ped_path_miles, va_bric_ct_pop, va_bric_ct_hazard)
+
+measure_tbl = big_tbl %>% select(Measure_Id, Measure) %>% unique()
+census_tract_tbl = big_tbl %>% select(CensusTract, CensusTractName) %>% unique()
+dataset_tbl = big_tbl %>% select(Measure_Id, DataSet) %>% unique()
+var_family_tbl = big_tbl %>% select(Measure_Id, Variable_Family) %>% unique()
+value_tbl = big_tbl %>% select(CensusTract, Measure_Id, Data_Value, Year)
+
+
+# write out individual tables long and wide
+write_csv(measure_tbl, file="output/db_tables/measure_tbl.csv")
+write_csv(census_tract_tbl, file="output/db_tables/census_tract_tbl.csv")
+write_csv(dataset_tbl, file="output/db_tables/dataset_tbl.csv")
+write_csv(var_family_tbl, file="output/db_tables/var_family_tbl.csv")
+write_csv(value_tbl, file="output/db_tables/value_tbl.csv")
+
 
 
 # data_for_emily_query = va_digital_twin %>% filter(Variable_Family == "PREVENTION" | Variable_Family == "HEALTH INSURANCE COVERAGE") %>% filter(CensusTractName %>% str_detect("Norfolk")) 
