@@ -10,9 +10,9 @@ unique_census_tract = df['census_tract'].unique()
 
 k = []
 for c in unique_census_tract:
-    r1 = min_mileage_any_outcome_improvement(c, 'diabetes', 'bike_ped_model_sweep.csv')
-    r2 = min_mileage_any_outcome_improvement(c, 'high bp', 'bike_ped_model_sweep.csv')
-    r3 = min_mileage_any_outcome_improvement(c, 'poor physical health', 'bike_ped_model_sweep.csv')
+    r1 = min_mileage_any_outcome_improvement(c, 'diabetes', filename)
+    r2 = min_mileage_any_outcome_improvement(c, 'high bp', filename)
+    r3 = min_mileage_any_outcome_improvement(c, 'poor physical health', filename)
     k.append(
         {
             'census_tract': c,
@@ -34,9 +34,9 @@ k.to_csv('../output/min_mileage_any_outcome_improvement.csv')
 
 l = []
 for c in unique_census_tract:
-    s1 = min_mileage_for_max_outcome(c, 'diabetes', 'bike_ped_model_sweep.csv')
-    s2 = min_mileage_for_max_outcome(c, 'high bp', 'bike_ped_model_sweep.csv')
-    s3 = min_mileage_for_max_outcome(c, 'poor physical health', 'bike_ped_model_sweep.csv')
+    s1 = min_mileage_for_max_outcome(c, 'diabetes', filename)
+    s2 = min_mileage_for_max_outcome(c, 'high bp', filename)
+    s3 = min_mileage_for_max_outcome(c, 'poor physical health', filename)
     l.append(
         {
             'census_tract': c,
